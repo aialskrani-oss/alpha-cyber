@@ -1,0 +1,852 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Alpha Cyber OSINT Platform API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: admin
+    description: Admin dashboard operations
+  - name: tools
+    description: OSINT tool execution
+  - name: searches
+    description: Search history and results
+  - name: reports
+    description: Report management
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with access code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "401":
+          description: Invalid or expired access code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current session
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current session info
+      responses:
+        "200":
+          description: Current session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionInfo"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get platform statistics
+      responses:
+        "200":
+          description: Platform stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformStats"
+
+  /admin/codes:
+    get:
+      operationId: listAccessCodes
+      tags: [admin]
+      summary: List all access codes
+      responses:
+        "200":
+          description: Access codes list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccessCode"
+    post:
+      operationId: createAccessCode
+      tags: [admin]
+      summary: Create a new access code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessCodeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessCode"
+
+  /admin/codes/{id}:
+    patch:
+      operationId: updateAccessCode
+      tags: [admin]
+      summary: Update an access code
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessCodeUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessCode"
+    delete:
+      operationId: deleteAccessCode
+      tags: [admin]
+      summary: Delete an access code
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /admin/sessions:
+    get:
+      operationId: listActiveSessions
+      tags: [admin]
+      summary: List all active sessions
+      responses:
+        "200":
+          description: Active sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActiveSession"
+
+  /admin/sessions/{sessionId}:
+    delete:
+      operationId: terminateSession
+      tags: [admin]
+      summary: Terminate an active session
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session terminated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /admin/logs:
+    get:
+      operationId: getAuditLogs
+      tags: [admin]
+      summary: Get audit logs
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogPage"
+
+  /admin/site-status:
+    patch:
+      operationId: updateSiteStatus
+      tags: [admin]
+      summary: Enable or disable the site
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteStatusUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /tools/search:
+    post:
+      operationId: startSearch
+      tags: [tools]
+      summary: Start an OSINT search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchInput"
+      responses:
+        "201":
+          description: Search started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchJob"
+
+  /searches:
+    get:
+      operationId: listSearches
+      tags: [searches]
+      summary: List search history
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Search history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchPage"
+
+  /searches/{searchId}:
+    get:
+      operationId: getSearch
+      tags: [searches]
+      summary: Get search details and results
+      parameters:
+        - name: searchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchDetails"
+    delete:
+      operationId: deleteSearch
+      tags: [searches]
+      summary: Delete a search record
+      parameters:
+        - name: searchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /searches/{searchId}/export:
+    post:
+      operationId: exportSearch
+      tags: [searches]
+      summary: Export search results
+      parameters:
+        - name: searchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExportInput"
+      responses:
+        "200":
+          description: Export URL or data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportResult"
+
+  /searches/stats:
+    get:
+      operationId: getSearchStats
+      tags: [searches]
+      summary: Get aggregated search statistics
+      responses:
+        "200":
+          description: Search statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchStats"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    LoginInput:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 4
+      required:
+        - code
+
+    AuthResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        role:
+          type: string
+          enum: [admin, user]
+        sessionId:
+          type: string
+      required:
+        - success
+        - role
+        - sessionId
+
+    SessionInfo:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        role:
+          type: string
+          enum: [admin, user]
+        ip:
+          type: string
+        userAgent:
+          type: string
+        createdAt:
+          type: string
+        accessCodeLabel:
+          type: string
+      required:
+        - sessionId
+        - role
+        - createdAt
+
+    AccessCode:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        label:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [admin, user]
+        isActive:
+          type: boolean
+        maxUses:
+          type: ["integer", "null"]
+        usedCount:
+          type: integer
+        expiresAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - code
+        - role
+        - isActive
+        - usedCount
+        - createdAt
+
+    AccessCodeInput:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 4
+        label:
+          type: string
+        role:
+          type: string
+          enum: [admin, user]
+        maxUses:
+          type: ["integer", "null"]
+        expiresAt:
+          type: ["string", "null"]
+      required:
+        - code
+        - role
+
+    AccessCodeUpdate:
+      type: object
+      properties:
+        label:
+          type: string
+        isActive:
+          type: boolean
+        maxUses:
+          type: ["integer", "null"]
+        expiresAt:
+          type: ["string", "null"]
+
+    ActiveSession:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        ip:
+          type: string
+        userAgent:
+          type: string
+        country:
+          type: ["string", "null"]
+        accessCodeLabel:
+          type: ["string", "null"]
+        role:
+          type: string
+        createdAt:
+          type: string
+        lastSeenAt:
+          type: string
+      required:
+        - sessionId
+        - ip
+        - userAgent
+        - role
+        - createdAt
+        - lastSeenAt
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: ["string", "null"]
+        ip:
+          type: string
+        userAgent:
+          type: string
+        country:
+          type: ["string", "null"]
+        action:
+          type: string
+        details:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - ip
+        - userAgent
+        - action
+        - createdAt
+
+    AuditLogPage:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - logs
+        - total
+        - page
+        - limit
+
+    PlatformStats:
+      type: object
+      properties:
+        totalCodes:
+          type: integer
+        activeCodes:
+          type: integer
+        activeSessions:
+          type: integer
+        totalSearches:
+          type: integer
+        searchesToday:
+          type: integer
+        siteEnabled:
+          type: boolean
+      required:
+        - totalCodes
+        - activeCodes
+        - activeSessions
+        - totalSearches
+        - searchesToday
+        - siteEnabled
+
+    SiteStatusUpdate:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+
+    SearchInput:
+      type: object
+      properties:
+        target:
+          type: string
+          description: "Username, email, phone number, or full name"
+        targetType:
+          type: string
+          enum: [username, email, phone, name, auto]
+        tools:
+          type: array
+          items:
+            type: string
+          description: "List of tools to run, or empty for auto-select"
+      required:
+        - target
+        - targetType
+
+    SearchJob:
+      type: object
+      properties:
+        searchId:
+          type: string
+        target:
+          type: string
+        targetType:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        tools:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+      required:
+        - searchId
+        - target
+        - targetType
+        - status
+        - tools
+        - createdAt
+
+    ToolResult:
+      type: object
+      properties:
+        tool:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed, skipped]
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResultItem"
+        duration:
+          type: ["integer", "null"]
+        errorMessage:
+          type: ["string", "null"]
+      required:
+        - tool
+        - status
+        - results
+
+    ResultItem:
+      type: object
+      properties:
+        platform:
+          type: ["string", "null"]
+        url:
+          type: ["string", "null"]
+        username:
+          type: ["string", "null"]
+        displayName:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        profilePicture:
+          type: ["string", "null"]
+        found:
+          type: boolean
+        metadata:
+          type: ["string", "null"]
+      required:
+        - found
+
+    SearchDetails:
+      type: object
+      properties:
+        searchId:
+          type: string
+        target:
+          type: string
+        targetType:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        tools:
+          type: array
+          items:
+            type: string
+        toolResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/ToolResult"
+        totalFound:
+          type: integer
+        createdAt:
+          type: string
+        completedAt:
+          type: ["string", "null"]
+      required:
+        - searchId
+        - target
+        - targetType
+        - status
+        - tools
+        - toolResults
+        - totalFound
+        - createdAt
+
+    SearchSummary:
+      type: object
+      properties:
+        searchId:
+          type: string
+        target:
+          type: string
+        targetType:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        totalFound:
+          type: integer
+        toolCount:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - searchId
+        - target
+        - targetType
+        - status
+        - totalFound
+        - toolCount
+        - createdAt
+
+    SearchPage:
+      type: object
+      properties:
+        searches:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchSummary"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - searches
+        - total
+        - page
+        - limit
+
+    SearchStats:
+      type: object
+      properties:
+        byTargetType:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountByLabel"
+        byStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountByLabel"
+        topTools:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountByLabel"
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyCount"
+      required:
+        - byTargetType
+        - byStatus
+        - topTools
+        - recentActivity
+
+    CountByLabel:
+      type: object
+      properties:
+        label:
+          type: string
+        count:
+          type: integer
+      required:
+        - label
+        - count
+
+    DailyCount:
+      type: object
+      properties:
+        date:
+          type: string
+        count:
+          type: integer
+      required:
+        - date
+        - count
+
+    ExportInput:
+      type: object
+      properties:
+        format:
+          type: string
+          enum: [pdf, csv, json]
+      required:
+        - format
+
+    ExportResult:
+      type: object
+      properties:
+        format:
+          type: string
+        data:
+          type: string
+          description: "Base64 encoded data or download URL"
+        filename:
+          type: string
+      required:
+        - format
+        - data
+        - filename
